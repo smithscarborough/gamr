@@ -67,8 +67,11 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   // check for email + password
   if (!req.body.email || !req.body.password) {
-    return res.status(422).json({ error: 'please include all required fields' });
+    return res.status(422).render('error', {
+      locals: { error: 'please include all required fields' }
+    });
   }
+
   // get user from db (by email)
   const user = await db.User.findOne({
     where: {
@@ -77,17 +80,30 @@ router.post('/login', async (req, res) => {
   })
   // error if no user
   if (!user) {
-    return res.status(404).json({ error: 'could not find user with that email' })
+    return res.status(404).render('error', { locals: { error: 'could not find user with that email' }})
   }
 
   // compare user input for password to hash (the compare below will be a boolean, so it will return true or false)
   const match = await bcrypt.compare(req.body.password, user.password) 
   // return error if incorrect
   if (!match) {
-    return res.status(401).json({ error: 'incorrect password' })
+    return res.status(401).render('error', { locals: { error: 'incorrect password' }})
   }
+
+  // set user data on session
+  req.session.user = user; // with this, anytime we send another request to the server, we are able to access the user's information
+
   // login if correct
-  res.json({ success: 'logged in!', user: user })
+  res.redirect('/games');
 })
+
+router.get('/logout', (req, res) => {
+  // clear user data on session to logout
+  req.session.user = null;
+
+  // redirect user to homepage after they have been logged out
+  res.redirect('/');
+})
+
 
 module.exports = router;
